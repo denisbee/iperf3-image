@@ -6,12 +6,11 @@ WORKDIR /root/iperf
 RUN git checkout 3.7
 RUN ./bootstrap.sh
 RUN sed -i 's/iperf3_profile_\(CFLAGS\|LDFLAGS\)\s*=\s*-pg -g/iperf3_profile_\1 = -g/' src/Makefile.am src/Makefile.in
-RUN ./configure && make && make DESTDIR="`pwd`/tmp" install
+RUN ./configure --enable-static "LDFLAGS=--static" --disable-shared --without-openssl && make && mkdir tmp
 
-FROM alpine:3.10 AS iperf3
-COPY --from=iperf3-build /root/iperf/tmp/ /
-RUN ldd /usr/local/bin/iperf3 && /usr/local/bin/iperf3 --version
-EXPOSE 5201/UDP
-EXPOSE 5201/TCP
-ENTRYPOINT [ "/usr/local/bin/iperf3" ]
+FROM scratch
+COPY --from=iperf3-build /root/iperf/src/iperf3 /iperf3
+COPY --from=iperf3-build /root/iperf/tmp /tmp
+EXPOSE 5201
+ENTRYPOINT [ "/iperf3" ]
 CMD [ "-s" ]
